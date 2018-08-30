@@ -5,25 +5,13 @@ import (
 	"fmt"
 	"math"
 	"text/template"
-	"strings"
 
 	"github.com/coreos/clair/api/v1"
 	"github.com/coreos/clair/utils/types"
-	"github.com/spf13/viper"
-	"os"
 )
 
 //execute go generate ./clair
 //go:generate go-bindata -pkg clair -o templates.go templates/...
-
-//Report Reporting Config value
-var Report ReportConfig
-
-//ReportConfig  Reporting configuration
-type ReportConfig struct {
-	Path   string
-	Format string
-}
 
 //ReportAsHTML report analysis as HTML
 func ReportAsHTML(analyzes ImageAnalysis) (string, error) {
@@ -34,7 +22,7 @@ func ReportAsHTML(analyzes ImageAnalysis) (string, error) {
 
 	funcs := template.FuncMap{
 		"vulnerabilities":       vulnerabilities,
-		"allVulnerabilities":    AllVulnerabilities,
+		"allVulnerabilities":    allVulnerabilities,
 		"sortedVulnerabilities": sortedVulnerabilities,
 	}
 
@@ -87,24 +75,15 @@ func (v vulnerabiliesCounts) RelativeCount(severity string) float64 {
 }
 
 // allVulnerabilities Total count of vulnerabilities
-func AllVulnerabilities(imageAnalysis ImageAnalysis) vulnerabiliesCounts {
+func allVulnerabilities(imageAnalysis ImageAnalysis) vulnerabiliesCounts {
 	result := make(vulnerabiliesCounts)
 
 	l := imageAnalysis.MostRecentLayer()
-	vulnerabilities := make(map[string]string)
 
 	for _, f := range l.Layer.Features {
+
 		for _, v := range f.Vulnerabilities {
-			if _, exist := vulnerabilities[v.Name]; !exist {
-				vulnerabilities[v.Name] = v.Severity
-			}
-		}
-	}
-	for _, p := range invertedPriorities() {
-		for _, v := range vulnerabilities {
-			if types.Priority(v) == p {
-				result[p]++
-			}
+			result[types.Priority(v.Severity)]++
 		}
 	}
 
@@ -150,25 +129,4 @@ func sortedVulnerabilities(imageAnalysis ImageAnalysis) []v1.Feature {
 	}
 
 	return features
-}
-
-func SaveReport(name string, content string) error {
-	path := viper.GetString("clair.report.path") + "/" + Report.Format
-	if err := os.MkdirAll(path, 0777); err != nil {
-		return err
-	}
-
-	reportsName := fmt.Sprintf("%v/analysis-%v.%v", path, name, strings.ToLower(Report.Format))
-	f, err := os.Create(reportsName)
-	if err != nil {
-		return fmt.Errorf("creating report file: %v", err)
-	}
-
-	_, err = f.WriteString(content)
-
-	if err != nil {
-		return fmt.Errorf("writing report file: %v", err)
-	}
-	fmt.Printf("%v report at %v\n", strings.ToUpper(Report.Format), reportsName)
-	return nil
 }

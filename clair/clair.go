@@ -6,16 +6,12 @@ import (
 
 	"github.com/coreos/clair/api/v1"
 	"github.com/coreos/pkg/capnslog"
-	"github.com/jgsqware/clairctl/xstrings"
-	"github.com/spf13/viper"
-	"net/http"
+	"github.com/jorgenj-ciandt/clairctl/xstrings"
 )
 
-var log = capnslog.NewPackageLogger("github.com/jgsqware/clairctl", "clair")
+var log = capnslog.NewPackageLogger("github.com/jorgenj-ciandt/clairctl", "clair")
 
 var uri string
-var headers map[string]string
-var host string
 var healthURI string
 
 //ImageAnalysis Full image analysis
@@ -47,21 +43,4 @@ func fmtURI(u string, port int) string {
 
 func (imageAnalysis ImageAnalysis) ShortName(l v1.Layer) string {
 	return xstrings.Substr(l.Name, 0, 12)
-}
-
-//Config configure Clair from configFile
-func Config() {
-	uri = fmtURI(viper.GetString("clair.uri"), viper.GetInt("clair.port")) + "/v1"
-	healthURI = fmtURI(viper.GetString("clair.uri"), viper.GetInt("clair.healthPort")) + "/health"
-	Report.Path = viper.GetString("clair.report.path")
-	Report.Format = viper.GetString("clair.report.format")
-	headers = viper.GetStringMapString("clair.request.headers")
-	host = viper.GetString("clair.request.host")
-}
-
-func SetRequestHeaders(request *http.Request) {
-	request.Host = host
-	for name, value := range headers {
-		request.Header.Add(name, value)
-	}
 }
